@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-#
-# managers/sssd.py
 """Manager for sssd operator."""
 import logging
-
-logger = logging.getLogger(__name__)
 import subprocess
 
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
-
 from utils.filedata import FileData
+
+logger = logging.getLogger(__name__)
 
 
 class SssdManager:
@@ -22,6 +19,7 @@ class SssdManager:
     systemd_services = ["sssd"]
 
     def __init__(self):
+        """Init."""
         pass
 
     def disable(self) -> None:
@@ -41,7 +39,7 @@ class SssdManager:
                 apt.update()
                 for name in self.packages:
                     apt.add_package(name)
-            except:
+            except Exception:
                 raise Exception(f"failed to install package ({name})")
 
     def is_enabled(self) -> bool:
@@ -60,7 +58,7 @@ class SssdManager:
                 try:
                     if not apt.DebianPackage.from_installed_package(name).present:
                         return False
-                except:
+                except Exception:
                     return False
         return True
 

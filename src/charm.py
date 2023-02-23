@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical
+# Copyright 2023 Canonical
 # See LICENSE file for licensing details.
-
+"""SSSD Operator Charm."""
 import logging
 
+from managers.sssd import SssdManager
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus
-
-from managers.sssd import SssdManager
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +16,7 @@ class SssdCharm(CharmBase):
     """SSSD Charm."""
 
     def __init__(self, *args):
+        """Init observe events and sssd manager."""
         super().__init__(*args)
         # Standard Charm Events
         self.framework.observe(self.on.install, self._on_install)

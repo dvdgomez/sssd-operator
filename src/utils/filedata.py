@@ -1,7 +1,7 @@
-#
-#
-# utils/filedata.py
-
+#!/usr/bin/env python3
+# Copyright 2023 Canonical
+# See LICENSE file for licensing details.
+"""Utility to convert passed relation data."""
 import base64
 import grp
 import hashlib
@@ -12,8 +12,11 @@ import pwd
 
 
 class FileData:
+    """File Data utility."""
+
     def __init__(self, encs=None):
-        d = self._loads(encs) if encs != None else {}
+        """Init file data properties."""
+        d = self._loads(encs) if encs is not None else {}
 
         self.checksum = d.get("checksum", None)
         self.data = d.get("data", None)
@@ -27,6 +30,7 @@ class FileData:
         self.uid = d.get("uid", None)
 
     def __repr__(self):
+        """Reroutes string representation to json dump."""
         return self._dumps()
 
     def _dumps(self):
@@ -60,6 +64,7 @@ class FileData:
         return d
 
     def load(self, path, dtype="t", checksum=False):
+        """Load file data."""
         p = pathlib.Path(path)
         if not p.exists():
             raise Exception("file not found")
@@ -77,12 +82,13 @@ class FileData:
         self.uid = stat.st_uid
 
     def save(self, path, mode=None, owner=None, group=None):
+        """Save file data."""
         try:
-            owner = owner if owner != None else -1
-            group = group if group != None else -1
+            owner = owner if owner is not None else -1
+            group = group if group is not None else -1
             uid = owner if type(owner) == int else pwd.getpwnam(owner).pw_uid
             gid = group if type(group) == int else grp.getgrnam(group).gr_gid
-        except:
+        except Exception:
             raise Exception("bad owner and/or group")
 
         p = pathlib.Path(path)
@@ -91,7 +97,7 @@ class FileData:
         if (uid, gid) != (-1, -1):
             os.chown(path, uid, gid)
 
-        if mode != None:
+        if mode is not None:
             p.chmod(mode)
 
         if type(self.data) == bytes:
@@ -100,6 +106,7 @@ class FileData:
             p.write_text(self.data)
 
     def set_data(self, data, checksum=False):
+        """Set data."""
         bdata = data if type(data) == bytes else data.encode("utf-8")
 
         self.data = data
