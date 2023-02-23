@@ -1,0 +1,8 @@
+name: sssd-operator
+display-name: sssd-operator
+description: SSSD operator for authentication.
+summary: This operator is responsible for SSSD connections for authentication.
+
+requires:
+  sssd-auth:
+    interface: sssd-auth
