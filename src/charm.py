@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical
 # See LICENSE file for licensing details.
+
 """SSSD Operator Charm."""
+
 import logging
 
-from managers.sssd import SssdManager
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus
+from sssd import Sssd
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +28,12 @@ class SssdCharm(CharmBase):
             self.on.sssd_auth_relation_changed, self._on_sssd_auth_relation_changed
         )
         # Client Manager
-        self.sssd_manager = SssdManager()
+        self.sssd_manager = Sssd()
 
     def _on_install(self, event):
         """Handle install event."""
         logger.info("Install")
-        if not self.sssd_manager.is_installed():
+        if not self.sssd_manager.is_installed:
             self.sssd_manager.install()
 
     def _on_start(self, event):
@@ -51,7 +53,7 @@ class SssdCharm(CharmBase):
             logger.info("sssd-auth relation-changed data found.")
         else:
             logger.info("sssd-auth relation-changed data not found: ca-cert and sssd-conf.")
-        if not self.sssd_manager.is_running():
+        if not self.sssd_manager.is_running:
             logger.error("Failed to start sssd")
 
 

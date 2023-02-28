@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical
 # See LICENSE file for licensing details.
+
 """Utility to convert passed relation data."""
+
 import base64
 import grp
 import hashlib
