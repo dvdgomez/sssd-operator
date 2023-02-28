@@ -21,7 +21,7 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
 
-    @patch("managers.sssd.SssdManager.start")
+    @patch("sssd.Sssd.start")
     def test_start(self, start) -> None:
         """Test install behavior."""
         self.harness.charm.on.start.emit()

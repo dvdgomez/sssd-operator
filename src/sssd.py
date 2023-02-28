@@ -7,7 +7,7 @@
 import logging
 import subprocess
 
-from charms.operator_libs_linux.v0 import PackageError, PackageNotFoundError, apt
+from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
 from utils.filedata import FileData
 
@@ -33,19 +33,12 @@ class Sssd:
         try:
             apt.update()
             apt.add_package(PACKAGES)
-        except PackageNotFoundError as e:
+        except apt.PackageNotFoundError as e:
             logger.error("a specified package not found in package cache or on system")
             raise e
-        except PackageError as e:
+        except apt.PackageError as e:
             logger.error("Could not install packages.")
             raise e
-
-    @property
-    def is_enabled(self) -> bool:
-        """Check enabled status of services."""
-        if not systemd._systemctl("is-enabled", SSSD, quiet=True):
-            return False
-        return True
 
     @property
     def is_installed(self) -> bool:
@@ -54,7 +47,7 @@ class Sssd:
             for pkg in PACKAGES:
                 if not apt.DebianPackage.from_installed_package(pkg).present:
                     return False
-        except PackageNotFoundError:
+        except apt.PackageNotFoundError:
             logger.error(f"package {pkg} is not currently installed.")
             return False
         return True
