@@ -61,6 +61,16 @@ class Sssd:
             return False
         return True
 
+    def remove(self) -> None:
+        """Remove packages."""
+        try:
+            apt.remove_package(PACKAGES)
+        except apt.PackageNotFoundError as e:
+            logger.error(
+                "a specified package to remove is not found in package cache or on system"
+            )
+            raise e
+
     def restart(self) -> None:
         """Restart servers/services."""
         self.stop()
