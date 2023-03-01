@@ -18,7 +18,7 @@ class SssdCharm(CharmBase):
     """SSSD Charm."""
 
     def __init__(self, *args):
-        """Init observe events and sssd manager."""
+        """Init observe events and sssd."""
         super().__init__(*args)
         # Standard Charm Events
         self.framework.observe(self.on.install, self._on_install)
@@ -28,18 +28,18 @@ class SssdCharm(CharmBase):
             self.on.sssd_auth_relation_changed, self._on_sssd_auth_relation_changed
         )
         # Client Manager
-        self.sssd_manager = Sssd()
+        self.sssd = Sssd()
 
     def _on_install(self, event):
         """Handle install event."""
         logger.info("Install")
-        if not self.sssd_manager.is_installed:
-            self.sssd_manager.install()
+        if not self.sssd.is_installed:
+            self.sssd.install()
 
     def _on_start(self, event):
         """Handle start event."""
         logger.info("Start")
-        self.sssd_manager.start()
+        self.sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
     def _on_sssd_auth_relation_changed(self, event):
@@ -48,12 +48,12 @@ class SssdCharm(CharmBase):
         ca_cert = auth_relation.data[event.app].get("ca-cert")
         sssd_conf = auth_relation.data[event.app].get("sssd-conf")
         if None not in [ca_cert, sssd_conf]:
-            self.sssd_manager.save_ca_cert(ca_cert)
-            self.sssd_manager.save_sssd_conf(sssd_conf)
+            self.sssd.save_ca_cert(ca_cert)
+            self.sssd.save_sssd_conf(sssd_conf)
             logger.info("sssd-auth relation-changed data found.")
         else:
             logger.info("sssd-auth relation-changed data not found: ca-cert and sssd-conf.")
-        if not self.sssd_manager.is_running:
+        if not self.sssd.is_running:
             logger.error("Failed to start sssd")
 
 

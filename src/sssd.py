@@ -9,12 +9,14 @@ import subprocess
 
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
-from utils.filedata import FileData
+from helpers import fchange, save
 
 logger = logging.getLogger(__name__)
 
+CACERT = "/usr/local/share/ca-certificates/mycacert.crt"
 PACKAGES = ["ldap-utils", "sssd-ldap"]
 SSSD = "sssd"
+SSSDCONF = "/etc/sssd/sssd.conf"
 
 
 class Sssd:
@@ -64,14 +66,13 @@ class Sssd:
         self.stop()
         self.start()
 
-    def save_ca_cert(self, ca_cert):
+    def save_ca_cert(self, ca_cert) -> None:
         """Save CA certificate.
 
         Args:
             ca_cert (str): CA certificate.
         """
-        fd = FileData(ca_cert)
-        fd.save("/usr/local/share/ca-certificates/mycacert.crt")
+        save(ca_cert, CACERT)
 
         rc = subprocess.call(
             ["update-ca-certificates"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
@@ -79,14 +80,14 @@ class Sssd:
         if rc != 0:
             raise Exception("Unable to update ca certificates.")
 
-    def save_sssd_conf(self, sssd_conf):
+    def save_sssd_conf(self, sssd_conf) -> None:
         """Save sssd conf.
 
         Args:
             sssd_conf (str): SSSD configuration file.
         """
-        fd = FileData(sssd_conf)
-        fd.save("/etc/sssd/sssd.conf", mode=0o600, owner="root", group="root")
+        save(sssd_conf, SSSDCONF)
+        fchange(SSSDCONF)
 
         systemd.service_restart(SSSD)
 
