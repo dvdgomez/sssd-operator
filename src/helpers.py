@@ -8,14 +8,14 @@ import base64
 import os
 
 
+def fchange(path: str) -> None:
+    """Change file ownership and permissions."""
+    os.chown(path, 0, 0)
+    os.chmod(path, 0o600)
+
+
 def save(data: str, path: str) -> None:
     """Decode base64 string and writes to path."""
     data = base64.b64decode(data.encode("utf-8"))
     with open(path, "wb") as f:
         f.write(data)
-
-
-def fchange(path: str) -> None:
-    """Change file ownership and permissions."""
-    os.chown(path, 0, 0)
-    os.chmod(path, 0o600)
