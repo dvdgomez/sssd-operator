@@ -25,7 +25,7 @@ class SSSDCharm(CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         # Integrations
         self.framework.observe(
-            self.on.sssd_auth_relation_changed, self._on_sssd_auth_relation_changed
+            self.on.sssd_ldap_relation_changed, self._on_sssd_ldap_relation_changed
         )
         # Client Manager
         self.sssd = SSSD()
@@ -42,9 +42,9 @@ class SSSDCharm(CharmBase):
         self.sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
-    def _on_sssd_auth_relation_changed(self, event):
-        """Handle sssd-auth relation changed event."""
-        auth_relation = self.model.get_relation("sssd-auth")
+    def _on_sssd_ldap_relation_changed(self, event):
+        """Handle sssd-ldap relation changed event."""
+        auth_relation = self.model.get_relation("sssd-ldap")
         ca_cert = auth_relation.data[event.app].get("ca-cert")
         sssd_conf = auth_relation.data[event.app].get("sssd-conf")
         if None not in [ca_cert, sssd_conf]:
@@ -53,9 +53,9 @@ class SSSDCharm(CharmBase):
             except Exception:
                 self.unit.status = BlockedStatus("CA Certificate transfer failed")
             self.sssd.save_conf(sssd_conf)
-            logger.info("sssd-auth relation-changed data found.")
+            logger.info("sssd-ldap relation-changed data found.")
         else:
-            logger.info("sssd-auth relation-changed data not found: ca-cert and sssd-conf.")
+            logger.info("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
         if not self.sssd.is_running:
             logger.error("Failed to start sssd")
 
