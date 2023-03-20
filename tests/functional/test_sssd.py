@@ -6,15 +6,15 @@
 
 import unittest
 
-from sssd import Sssd
+from sssd import SSSD
 
 
-class TestGlauth(unittest.TestCase):
+class TestSSSDCharm(unittest.TestCase):
     """Test sssd charm functionality."""
 
     def setUp(self) -> None:
         """Install sssd."""
-        self.sssd = Sssd()
+        self.sssd = SSSD()
         if not self.sssd.is_installed:
             self.sssd.install()
 

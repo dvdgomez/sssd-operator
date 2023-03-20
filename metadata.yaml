@@ -1,8 +1,12 @@
-name: sssd-operator
-display-name: sssd-operator
+name: sssd
+display-name: SSSD Client
 description: SSSD operator for authentication.
+subordinate: true
 summary: This operator is responsible for SSSD connections for authentication.
 
 requires:
-  sssd-auth:
-    interface: sssd-auth
+  juju-info:
+    interface: juju-info
+    scope: container
+  sssd-ldap:
+    interface: sssd-ldap

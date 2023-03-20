@@ -8,13 +8,13 @@ import logging
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus
-from sssd import Sssd
+from ops.model import ActiveStatus, BlockedStatus
+from sssd import SSSD
 
 logger = logging.getLogger(__name__)
 
 
-class SssdCharm(CharmBase):
+class SSSDCharm(CharmBase):
     """SSSD Charm."""
 
     def __init__(self, *args):
@@ -28,7 +28,7 @@ class SssdCharm(CharmBase):
             self.on.sssd_auth_relation_changed, self._on_sssd_auth_relation_changed
         )
         # Client Manager
-        self.sssd = Sssd()
+        self.sssd = SSSD()
 
     def _on_install(self, event):
         """Handle install event."""
@@ -48,8 +48,11 @@ class SssdCharm(CharmBase):
         ca_cert = auth_relation.data[event.app].get("ca-cert")
         sssd_conf = auth_relation.data[event.app].get("sssd-conf")
         if None not in [ca_cert, sssd_conf]:
-            self.sssd.save_ca_cert(ca_cert)
-            self.sssd.save_sssd_conf(sssd_conf)
+            try:
+                self.sssd.save_ca_cert(ca_cert)
+            except Exception:
+                self.unit.status = BlockedStatus("CA Certificate transfer failed")
+            self.sssd.save_conf(sssd_conf)
             logger.info("sssd-auth relation-changed data found.")
         else:
             logger.info("sssd-auth relation-changed data not found: ca-cert and sssd-conf.")
@@ -58,4 +61,4 @@ class SssdCharm(CharmBase):
 
 
 if __name__ == "__main__":  # pragma: nocover
-    main(SssdCharm)
+    main(SSSDCharm)

@@ -7,7 +7,7 @@
 import unittest
 from unittest.mock import patch
 
-from charm import SssdCharm
+from charm import SSSDCharm
 from ops.model import ActiveStatus
 from ops.testing import Harness
 
@@ -17,7 +17,7 @@ class TestCharm(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up unit test."""
-        self.harness = Harness(SssdCharm)
+        self.harness = Harness(SSSDCharm)
         self.addCleanup(self.harness.cleanup)
         self.harness.begin()
 
