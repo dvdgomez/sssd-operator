@@ -33,7 +33,7 @@ class SSSDCharm(CharmBase):
     def _on_install(self, event):
         """Handle install event."""
         logger.info("Install")
-        if not self.sssd.is_installed:
+        if not self.sssd.available:
             self.sssd.install()
 
     def _on_start(self, event):
@@ -56,7 +56,7 @@ class SSSDCharm(CharmBase):
             logger.info("sssd-ldap relation-changed data found.")
         else:
             logger.info("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
-        if not self.sssd.is_running:
+        if not self.sssd.running:
             logger.error("Failed to start sssd")
 
 
