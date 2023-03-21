@@ -20,7 +20,7 @@ async def test_deploy(ops_test: OpsTest, series: str, sssd_charm):
     await ops_test.model.deploy(
         str(await sssd_charm),
         application_name=SSSD,
-        num_units=1,
+        num_units=None,
         series=series,
     )
     # issuing update_status just to trigger an event
