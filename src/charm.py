@@ -18,7 +18,6 @@ class SSSDCharm(CharmBase):
     """SSSD Charm."""
 
     def __init__(self, *args):
-        """Init observe events and sssd."""
         super().__init__(*args)
         # Standard Charm Events
         self.framework.observe(self.on.install, self._on_install)

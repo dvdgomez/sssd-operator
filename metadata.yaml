@@ -1,3 +1,6 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 name: sssd
 display-name: SSSD Client
 description: SSSD operator for authentication.
