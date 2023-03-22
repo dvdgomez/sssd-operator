@@ -6,7 +6,7 @@
 
 import unittest
 
-from sssd import SSSD
+import sssd
 
 
 class TestSSSDCharm(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestSSSDCharm(unittest.TestCase):
 
     def setUp(self) -> None:
         """Install sssd."""
-        self.sssd = SSSD()
+        self.sssd = sssd
         if not self.sssd.available:
             self.sssd.install()
 

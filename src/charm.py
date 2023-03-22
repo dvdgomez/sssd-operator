@@ -6,10 +6,10 @@
 
 import logging
 
+import sssd
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus
-from sssd import SSSD
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +27,17 @@ class SSSDCharm(CharmBase):
             self.on.sssd_ldap_relation_changed, self._on_sssd_ldap_relation_changed
         )
         # Client Manager
-        self.sssd = SSSD()
+        self.sssd = sssd
 
     def _on_install(self, event):
         """Handle install event."""
-        logger.info("Install")
+        logger.debug("Install")
         if not self.sssd.available:
             self.sssd.install()
 
     def _on_start(self, event):
         """Handle start event."""
-        logger.info("Start")
+        logger.debug("Start")
         self.sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
@@ -52,9 +52,9 @@ class SSSDCharm(CharmBase):
             except Exception:
                 self.unit.status = BlockedStatus("CA Certificate transfer failed")
             self.sssd.save_conf(sssd_conf)
-            logger.info("sssd-ldap relation-changed data found.")
+            logger.debug("sssd-ldap relation-changed data found.")
         else:
-            logger.info("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
+            logger.error("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
         if not self.sssd.running:
             logger.error("Failed to start sssd")
 
