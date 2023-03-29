@@ -7,7 +7,7 @@
 import logging
 
 import sssd
-from ops.charm import CharmBase
+from ops.charm import CharmBase, RelationChangedEvent
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus
 
@@ -26,6 +26,7 @@ class SSSDCharm(CharmBase):
         self.framework.observe(
             self.on.sssd_ldap_relation_changed, self._on_sssd_ldap_relation_changed
         )
+        # self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
     def _on_install(self, event):
         """Handle install event."""
@@ -39,22 +40,30 @@ class SSSDCharm(CharmBase):
         sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
-    def _on_sssd_ldap_relation_changed(self, event):
+    def _on_sssd_ldap_relation_changed(self, event: RelationChangedEvent):
         """Handle sssd-ldap relation changed event."""
+        # SSSD Observer gets trusted-entity secret
+        trusted_entity = event.relation.data[event.app]['trusted-entity']
+        secret = self.model.get_secret(id=trusted_entity)
+        content = secret.get_content()
+        # SSSD Configuration relation data
         auth_relation = self.model.get_relation("sssd-ldap")
-        ca_cert = auth_relation.data[event.app].get("ca-cert")
-        sssd_conf = auth_relation.data[event.app].get("sssd-conf")
-        if None not in [ca_cert, sssd_conf]:
+        domain = auth_relation.data[event.app].get("domain")
+        ldap_uri = auth_relation.data[event.app].get("ldap-uri")
+        if None not in [content["ca-cert"], domain, ldap_uri]:
             try:
-                sssd.save_ca_cert(ca_cert)
+                sssd.save_ca_cert(content["ca-cert"])
             except Exception:
-                self.unit.status = BlockedStatus("CA Certificate transfer failed")
-            sssd.save_conf(sssd_conf)
+                self.unit.status = BlockedStatus("CA Certificate secret transfer failed")
+            sssd.save_conf(domain, ldap_uri, content["password"])
             logger.debug("sssd-ldap relation-changed data found.")
+            self.unit.status = ActiveStatus("SSSD Active")
         else:
             logger.error("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
         if not sssd.running:
             logger.error("Failed to start sssd")
+            self.unit.status = BlockedStatus("SSSD failed to run")
+        
 
 
 if __name__ == "__main__":  # pragma: nocover

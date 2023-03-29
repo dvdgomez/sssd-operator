@@ -88,8 +88,8 @@ def save_ca_cert(ca_cert: str) -> None:
     Args:
         ca_cert: CA certificate.
     """
-    cacert_path = "/etc/ssl/certs/mycacert.crt"
-    _save(ca_cert, cacert_path)
+    with open("/usr/local/share/ca-certificates/glauth.crt", "w") as f:
+        f.write(ca_cert)
 
     try:
         subprocess.run(
@@ -103,15 +103,39 @@ def save_ca_cert(ca_cert: str) -> None:
         logger.error(f"{e} Reason:\n{e.stderr}")
 
 
-def save_conf(sssd_conf: str) -> None:
+def save_conf(domain: str, ldap_uri: str, password: str) -> None:
     """Save sssd conf.
 
     Args:
-        sssd_conf: SSSD configuration file.
+        domain:   Domain name.
+        ldap_uri: LDAPS address.
+        password: Password passed from trusted-entity secret.
     """
-    sssd_conf_path = "/etc/sssd/sssd.conf"
-    # Decode base64 string and writes to path
-    _save(sssd_conf, sssd_conf_path)
+    sssd_conf_path = "/etc/sssd/conf.d/sssd.conf"
+    # Write contents to config file
+    sssd_conf = (
+        "[sssd]\n"
+        "config_file_version = 2\n"
+        "services = nss, pam, ssh\n"
+        f"domains = MYDOMAIN\n"
+        "\n"
+        "[nss]\n"
+        "\n"
+        "[pam]\n"
+        "\n"
+        f"[domain/MYDOMAIN]\n"
+        "cache_credentials = True\n"
+        "id_provider = ldap\n"
+        "auth_provider = ldap\n"
+        f"ldap_uri = ldaps://{ldap_uri}:3894\n"
+        f"ldap_search_base = {domain}\n"
+        "ldap_default_authtok_type = password\n"
+        f"ldap_default_authtok = {password}\n"
+        "ldap_group_member = member\n"
+        "ldap_schema = rfc2307bis\n"
+    )
+    with open("/etc/sssd/conf.d/sssd.conf", "w") as f:
+        f.write(sssd_conf)
     # Change file ownership and permissions
     os.chown(sssd_conf_path, 0, 0)
     os.chmod(sssd_conf_path, 0o600)
