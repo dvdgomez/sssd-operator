@@ -129,6 +129,7 @@ def save_conf(domain: str, ldap_uri: str, password: str) -> None:
         "auth_provider = ldap\n"
         f"ldap_uri = ldaps://{ldap_uri}:3894\n"
         f"ldap_search_base = {domain}\n"
+        "ldap_default_bind_dn = cn=serviceuser,ou=svcaccts,dc=glauth,dc=com\n"
         "ldap_default_authtok_type = password\n"
         f"ldap_default_authtok = {password}\n"
         "ldap_group_member = member\n"
