@@ -24,7 +24,7 @@ class SSSDCharm(CharmBase):
         self.framework.observe(self.on.start, self._on_start)
         # Integrations
         self.framework.observe(
-            self.on.sssd_ldap_relation_changed, self._on_sssd_ldap_relation_changed
+            self.on.ldap_client_relation_changed, self._on_ldap_client_relation_changed
         )
         # self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
@@ -40,22 +40,41 @@ class SSSDCharm(CharmBase):
         sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
-    def _on_sssd_ldap_relation_changed(self, event: RelationChangedEvent):
-        """Handle sssd-ldap relation changed event."""
-        # SSSD Observer gets trusted-entity secret
-        trusted_entity = event.relation.data[event.app]['trusted-entity']
-        secret = self.model.get_secret(id=trusted_entity)
-        content = secret.get_content()
+    def _on_ldap_client_relation_changed(self, event: RelationChangedEvent):
+        """Handle ldap-client relation changed event."""
+        # SSSD Observer retrieves secrets
+        ca_cert = event.relation.data[event.app]["ca-cert"]
+        default_bind_dn = event.relation.data[event.app]["ldap-default-bind-dn"]
+        ldap_password = event.relation.data[event.app]["ldap-password"]
+        cc_secret = self.model.get_secret(id=ca_cert)
+        ldbd_secret = self.model.get_secret(id=default_bind_dn)
+        lp_secret = self.model.get_secret(id=ldap_password)
+        cc_content = cc_secret.get_content()
+        ldbd_content = ldbd_secret.get_content()
+        lp_content = lp_secret.get_content()
         # SSSD Configuration relation data
-        auth_relation = self.model.get_relation("sssd-ldap")
+        auth_relation = self.model.get_relation("ldap-client")
+        basedn = auth_relation.data[event.app].get("basedn")
         domain = auth_relation.data[event.app].get("domain")
         ldap_uri = auth_relation.data[event.app].get("ldap-uri")
-        if None not in [content["ca-cert"], domain, ldap_uri]:
+        if None not in [
+            cc_content["ca-cert"],
+            ldbd_content["ldap-default-bind-dn"],
+            lp_content["ldap-password"],
+            domain,
+            ldap_uri,
+        ]:
             try:
-                sssd.save_ca_cert(content["ca-cert"])
+                sssd.save_ca_cert(cc_content["ca-cert"])
             except Exception:
                 self.unit.status = BlockedStatus("CA Certificate secret transfer failed")
-            sssd.save_conf(domain, ldap_uri, content["password"])
+            sssd.save_conf(
+                basedn,
+                domain,
+                ldap_uri,
+                ldbd_content["ldap-default-bind-dn"],
+                lp_content["ldap-password"],
+            )
             logger.debug("sssd-ldap relation-changed data found.")
             self.unit.status = ActiveStatus("SSSD Active")
         else:
@@ -63,7 +82,6 @@ class SSSDCharm(CharmBase):
         if not sssd.running:
             logger.error("Failed to start sssd")
             self.unit.status = BlockedStatus("SSSD failed to run")
-        
 
 
 if __name__ == "__main__":  # pragma: nocover

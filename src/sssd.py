@@ -103,13 +103,17 @@ def save_ca_cert(ca_cert: str) -> None:
         logger.error(f"{e} Reason:\n{e.stderr}")
 
 
-def save_conf(domain: str, ldap_uri: str, password: str) -> None:
+def save_conf(
+    basedn: str, domain: str, ldap_uri: str, ldap_default_bind_dn: str, ldap_password: str
+) -> None:
     """Save sssd conf.
 
     Args:
+        basedn:   Default base DN.
         domain:   Domain name.
         ldap_uri: LDAPS address.
-        password: Password passed from trusted-entity secret.
+        ldap_default_bind_dn: Default bind DN from secret.
+        ldap_password: Password passed from secret.
     """
     sssd_conf_path = "/etc/sssd/conf.d/sssd.conf"
     # Write contents to config file
@@ -117,21 +121,21 @@ def save_conf(domain: str, ldap_uri: str, password: str) -> None:
         "[sssd]\n"
         "config_file_version = 2\n"
         "services = nss, pam, ssh\n"
-        f"domains = MYDOMAIN\n"
+        f"domains = {domain}\n"
         "\n"
         "[nss]\n"
         "\n"
         "[pam]\n"
         "\n"
-        f"[domain/MYDOMAIN]\n"
+        f"[domain/{domain}]\n"
         "cache_credentials = True\n"
         "id_provider = ldap\n"
         "auth_provider = ldap\n"
         f"ldap_uri = ldaps://{ldap_uri}:3894\n"
-        f"ldap_search_base = {domain}\n"
-        "ldap_default_bind_dn = cn=serviceuser,ou=svcaccts,dc=glauth,dc=com\n"
+        f"ldap_search_base = {basedn}\n"
+        f"ldap_default_bind_dn = {ldap_default_bind_dn}\n"
         "ldap_default_authtok_type = password\n"
-        f"ldap_default_authtok = {password}\n"
+        f"ldap_default_authtok = {ldap_password}\n"
         "ldap_group_member = member\n"
         "ldap_schema = rfc2307bis\n"
     )
