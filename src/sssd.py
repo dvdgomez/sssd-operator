@@ -4,7 +4,6 @@
 
 """Provides sssd class to control sssd."""
 
-import base64
 import logging
 import os
 import subprocess
@@ -29,18 +28,6 @@ def __getattr__(prop: str):
             return False
         return True
     raise AttributeError(f"Module {__name__!r} has no property {prop!r}")
-
-
-def _save(data: str, path: str) -> None:
-    """Decode base64 string and writes to path.
-
-    Args:
-        data: Data to save.
-        path: Location to save data to.
-    """
-    data = base64.b64decode(data.encode("utf-8"))
-    with open(path, "wb") as f:
-        f.write(data)
 
 
 def disable() -> None:
