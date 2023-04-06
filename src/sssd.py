@@ -10,6 +10,7 @@ import subprocess
 
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
+from jinja2 import Template
 
 logger = logging.getLogger(__name__)
 
@@ -104,30 +105,17 @@ def save_conf(
     """
     sssd_conf_path = "/etc/sssd/conf.d/sssd.conf"
     # Write contents to config file
-    sssd_conf = (
-        "[sssd]\n"
-        "config_file_version = 2\n"
-        "services = nss, pam, ssh\n"
-        f"domains = {domain}\n"
-        "\n"
-        "[nss]\n"
-        "\n"
-        "[pam]\n"
-        "\n"
-        f"[domain/{domain}]\n"
-        "cache_credentials = True\n"
-        "id_provider = ldap\n"
-        "auth_provider = ldap\n"
-        f"ldap_uri = ldaps://{ldap_uri}:3894\n"
-        f"ldap_search_base = {basedn}\n"
-        f"ldap_default_bind_dn = {ldap_default_bind_dn}\n"
-        "ldap_default_authtok_type = password\n"
-        f"ldap_default_authtok = {ldap_password}\n"
-        "ldap_group_member = member\n"
-        "ldap_schema = rfc2307bis\n"
+    with open("templates/sssd.toml.j2", "r") as f:
+        template = Template(f.read())
+    rendered = template.render(
+        basedn=basedn,
+        domain=domain,
+        ldap_uri=ldap_uri,
+        ldap_default_bind_dn=ldap_default_bind_dn,
+        ldap_password=ldap_password,
     )
-    with open("/etc/sssd/conf.d/sssd.conf", "w") as f:
-        f.write(sssd_conf)
+    with open(sssd_conf_path, "w") as f:
+        f.write(rendered)
     # Change file ownership and permissions
     os.chown(sssd_conf_path, 0, 0)
     os.chmod(sssd_conf_path, 0o600)
