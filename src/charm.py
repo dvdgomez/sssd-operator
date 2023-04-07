@@ -61,6 +61,7 @@ class SSSDCharm(CharmBase):
             cc_content["ca-cert"],
             ldbd_content["ldap-default-bind-dn"],
             lp_content["ldap-password"],
+            basedn,
             domain,
             ldap_uri,
         ]:
