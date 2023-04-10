@@ -119,7 +119,6 @@ def save_conf(
     # Change file ownership and permissions
     os.chown(sssd_conf_path, 0, 0)
     os.chmod(sssd_conf_path, 0o600)
-    systemd.service_restart("sssd")
 
 
 def start() -> None:

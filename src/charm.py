@@ -7,7 +7,14 @@
 import logging
 
 import sssd
-from ops.charm import CharmBase, RelationChangedEvent
+from ldapclient_lib import (
+    CertificateAvailableEvent,
+    CertificateUnavailableEvent,
+    ConfigDataAvailableEvent,
+    LdapClientRequires,
+    SssdReadyEvent,
+)
+from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus
 
@@ -19,14 +26,27 @@ class SSSDCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self.ldapclient = LdapClientRequires(self, "ldap-client")
         # Standard Charm Events
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
-        # Integrations
+        # LDAP Client Lib Integrations
         self.framework.observe(
-            self.on.ldap_client_relation_changed, self._on_ldap_client_relation_changed
+            self.ldapclient.on.certificate_available,
+            self._on_certificate_available,
         )
-        # self.framework.observe(self.on.secret_changed, self._on_secret_changed)
+        self.framework.observe(
+            self.ldapclient.on.certificate_unavailable,
+            self._on_certificate_unavailable,
+        )
+        self.framework.observe(
+            self.ldapclient.on.config_data_available,
+            self._on_config_data_available,
+        )
+        self.framework.observe(
+            self.ldapclient.on.sssd_ready,
+            self._on_sssd_ready,
+        )
 
     def _on_install(self, event):
         """Handle install event."""
@@ -40,46 +60,31 @@ class SSSDCharm(CharmBase):
         sssd.start()
         self.unit.status = ActiveStatus("SSSD Operator Started")
 
-    def _on_ldap_client_relation_changed(self, event: RelationChangedEvent):
-        """Handle ldap-client relation changed event."""
-        # SSSD Observer retrieves secrets
-        ca_cert = event.relation.data[event.app]["ca-cert"]
-        default_bind_dn = event.relation.data[event.app]["ldap-default-bind-dn"]
-        ldap_password = event.relation.data[event.app]["ldap-password"]
-        cc_secret = self.model.get_secret(id=ca_cert)
-        ldbd_secret = self.model.get_secret(id=default_bind_dn)
-        lp_secret = self.model.get_secret(id=ldap_password)
-        cc_content = cc_secret.get_content()
-        ldbd_content = ldbd_secret.get_content()
-        lp_content = lp_secret.get_content()
-        # SSSD Configuration relation data
-        auth_relation = self.model.get_relation("ldap-client")
-        basedn = auth_relation.data[event.app].get("basedn")
-        domain = auth_relation.data[event.app].get("domain")
-        ldap_uri = auth_relation.data[event.app].get("ldap-uri")
-        if None not in [
-            cc_content["ca-cert"],
-            ldbd_content["ldap-default-bind-dn"],
-            lp_content["ldap-password"],
-            basedn,
-            domain,
-            ldap_uri,
-        ]:
-            try:
-                sssd.save_ca_cert(cc_content["ca-cert"])
-            except Exception:
-                self.unit.status = BlockedStatus("CA Certificate secret transfer failed")
-            sssd.save_conf(
-                basedn,
-                domain,
-                ldap_uri,
-                ldbd_content["ldap-default-bind-dn"],
-                lp_content["ldap-password"],
-            )
-            logger.debug("sssd-ldap relation-changed data found.")
-            self.unit.status = ActiveStatus("SSSD Active")
-        else:
-            logger.error("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
+    def _on_certificate_unavailable(self, event: CertificateUnavailableEvent):
+        """Handle certificate-unavailable event."""
+        self.unit.status = BlockedStatus("CA Certificate not available")
+
+    def _on_certificate_available(self, event: CertificateAvailableEvent):
+        """Handle certificate-available event."""
+        try:
+            sssd.save_ca_cert(event.ca_cert)
+        except Exception:
+            self.unit.status = BlockedStatus("CA Certificate secret transfer failed")
+
+    def _on_config_data_available(self, event: ConfigDataAvailableEvent):
+        """Handle certificate-available event."""
+        sssd.save_conf(
+            event.basedn,
+            event.domain,
+            event.ldap_uri,
+            event.ldbd_content,
+            event.lp_content,
+        )
+        self.unit.status = ActiveStatus("SSSD Active")
+
+    def _on_sssd_ready(self, event: SssdReadyEvent):
+        """Handle sssd-ready event."""
+        sssd.restart()
         if not sssd.running:
             logger.error("Failed to start sssd")
             self.unit.status = BlockedStatus("SSSD failed to run")
