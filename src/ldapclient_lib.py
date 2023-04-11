@@ -30,7 +30,13 @@ import shlex
 import subprocess
 import zipfile
 
-from ops.charm import CharmBase, CharmEvents, RelationChangedEvent, RelationJoinedEvent
+from ops.charm import (
+    CharmBase,
+    CharmEvents,
+    RelationBrokenEvent,
+    RelationChangedEvent,
+    RelationJoinedEvent,
+)
 from ops.framework import EventBase, EventSource, Handle, Object
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 
@@ -151,11 +157,15 @@ class ConfigDataUnavailableEvent(EventBase):
 class ServerUnavailableEvent(EventBase):
     """Charm Event triggered When the LDAP server is unavailable."""
 
-    pass
+    def __init__(
+        self,
+        handle: Handle,
+    ):
+        super().__init__(handle)
 
 
-class SssdReadyEvent(EventBase):
-    """Charm Event triggered when sssd is ready to start."""
+class LdapReadyEvent(EventBase):
+    """Charm Event triggered when LDAP is ready to start."""
 
     def __init__(
         self,
@@ -169,6 +179,7 @@ class LdapClientProviderCharmEvents(CharmEvents):
 
     config_data_unavailable = EventSource(ConfigDataUnavailableEvent)
     glauth_snap_ready = EventSource(GlauthSnapReadyEvent)
+    server_unavailable = EventSource(ServerUnavailableEvent)
 
 
 class LdapClientRequirerCharmEvents(CharmEvents):
@@ -179,7 +190,7 @@ class LdapClientRequirerCharmEvents(CharmEvents):
     config_data_available = EventSource(ConfigDataAvailableEvent)
     config_data_unavailable = EventSource(ConfigDataUnavailableEvent)
     server_unavailable = EventSource(ServerUnavailableEvent)
-    sssd_ready = EventSource(SssdReadyEvent)
+    ldap_ready = EventSource(LdapReadyEvent)
 
 
 class LdapClientProvides(Object):
@@ -189,6 +200,10 @@ class LdapClientProvides(Object):
 
     def __init__(self, charm: CharmBase, integration_name: str) -> None:
         super().__init__(charm, integration_name)
+        self.framework.observe(
+            charm.on[integration_name].relation_broken,
+            self._on_relation_broken,
+        )
         self.framework.observe(
             charm.on[integration_name].relation_joined,
             self._on_relation_joined,
@@ -206,6 +221,21 @@ class LdapClientProvides(Object):
             ["cat", "/etc/hostname"], capture_output=True, text=True
         ).stdout.strip()
         return hostname
+
+    def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
+        """Handle relation-broken event.
+
+        When the ldapclient relation is broken and emits:
+        - Server unavailable event: When the ldap server can't be reached.
+        """
+        # Remove Obsolete Secrets
+        ca_cert_secret = self.model.get_secret(label="ca-cert")
+        ldbd_secret = self.model.get_secret(label="ldap-default-bind-dn")
+        lp_secret = self.model.get_secret(label="ldap-password")
+        ca_cert_secret.remove_all_revisions()
+        ldbd_secret.remove_all_revisions()
+        lp_secret.remove_all_revisions()
+        self.on.server_unavailable.emit()
 
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """Event emitted when the relation is joined.
@@ -312,8 +342,20 @@ class LdapClientRequires(Object):
             charm.on[integration_name].relation_changed,
             self._on_relation_changed,
         )
+        self.framework.observe(
+            charm.on[integration_name].relation_broken,
+            self._on_relation_broken,
+        )
         self.charm = charm
         self.integration_name = integration_name
+
+    def _on_relation_broken(self, event: RelationBrokenEvent):
+        """Handle relation-broken event.
+
+        When the ldapclient relation is broken and emits:
+        - Server unavailable event: When the ldap server can't be reached.
+        """
+        self.on.server_unavailable.emit()
 
     def _on_relation_changed(self, event: RelationChangedEvent):
         """Handle relation-changed event.
@@ -323,8 +365,7 @@ class LdapClientRequires(Object):
         - Certificate unavailable event: When a CA certificate is unavailable.
         - Configuration data available event: When configuration data is available.
         - Configuration data unavailable event: When configuration data is unavailable.
-        - Server unavailable event: When the ldap server can't be reached. Need to remove cert, stop sssd, remove sssd.conf
-        (RelationBrokenEvent)
+        - Ldap ready event: When cert and config are available.
         """
         # SSSD Observer retrieves secrets
         ca_cert = event.relation.data[event.app]["ca-cert"]
@@ -359,4 +400,4 @@ class LdapClientRequires(Object):
             )
         else:
             logger.error("sssd-ldap relation-changed data not found: ca-cert and sssd-conf.")
-        self.on.sssd_ready.emit()
+        self.on.ldap_ready.emit()

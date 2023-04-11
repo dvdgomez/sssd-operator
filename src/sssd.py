@@ -6,6 +6,7 @@
 
 import logging
 import os
+import pathlib
 import subprocess
 
 from charms.operator_libs_linux.v0 import apt
@@ -63,6 +64,26 @@ def remove() -> None:
     except apt.PackageNotFoundError as e:
         logger.error("a specified package to remove is not found in package cache or on system")
         raise e
+
+
+def remove_ca_cert() -> None:
+    """Remove CA certificate."""
+    pathlib.Path("/usr/local/share/ca-certificates/glauth.crt").unlink(missing_ok=True)
+    try:
+        subprocess.run(
+            ["update-ca-certificates", "--fresh"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error(f"{e} Reason:\n{e.stderr}")
+
+
+def remove_conf() -> None:
+    """Remove sssd configuration."""
+    pathlib.Path("/etc/sssd/conf.d/sssd.conf").unlink(missing_ok=True)
 
 
 def restart() -> None:

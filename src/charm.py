@@ -12,7 +12,8 @@ from ldapclient_lib import (
     CertificateUnavailableEvent,
     ConfigDataAvailableEvent,
     LdapClientRequires,
-    SssdReadyEvent,
+    LdapReadyEvent,
+    ServerUnavailableEvent,
 )
 from ops.charm import CharmBase
 from ops.main import main
@@ -44,8 +45,12 @@ class SSSDCharm(CharmBase):
             self._on_config_data_available,
         )
         self.framework.observe(
-            self.ldapclient.on.sssd_ready,
-            self._on_sssd_ready,
+            self.ldapclient.on.ldap_ready,
+            self._on_ldap_ready,
+        )
+        self.framework.observe(
+            self.ldapclient.on.server_unavailable,
+            self._on_server_unavailable,
         )
 
     def _on_install(self, event):
@@ -82,12 +87,21 @@ class SSSDCharm(CharmBase):
         )
         self.unit.status = ActiveStatus("SSSD Active")
 
-    def _on_sssd_ready(self, event: SssdReadyEvent):
-        """Handle sssd-ready event."""
+    def _on_ldap_ready(self, event: LdapReadyEvent):
+        """Handle ldap-ready event."""
         sssd.restart()
         if not sssd.running:
             logger.error("Failed to start sssd")
             self.unit.status = BlockedStatus("SSSD failed to run")
+
+    def _on_server_unavailable(self, event: ServerUnavailableEvent):
+        """Handle server-unavailable event."""
+        # Stop SSSD
+        sssd.stop()
+        # Remove Obsolete SSSD Configuration
+        sssd.remove_conf()
+        # Remove Obsolete CA Certificate
+        sssd.remove_ca_cert()
 
 
 if __name__ == "__main__":  # pragma: nocover
