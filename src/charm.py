@@ -80,7 +80,7 @@ class SSSDCharm(CharmBase):
         """Handle certificate-available event."""
         sssd.save_conf(
             event.basedn,
-            event.domain,
+            self.app.name,
             event.ldap_uri,
             event.ldbd_content,
             event.lp_content,

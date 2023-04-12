@@ -97,14 +97,12 @@ class ConfigDataAvailableEvent(EventBase):
         self,
         handle: Handle,
         basedn: str,
-        domain: str,
         ldap_uri: str,
         ldbd_content: str,
         lp_content: str,
     ):
         super().__init__(handle)
         self.basedn = basedn
-        self.domain = domain
         self.ldap_uri = ldap_uri
         self.ldbd_content = ldbd_content
         self.lp_content = lp_content
@@ -113,7 +111,6 @@ class ConfigDataAvailableEvent(EventBase):
         """Return snapshot."""
         return {
             "basedn": self.basedn,
-            "domain": self.domain,
             "ldap_uri": self.ldap_uri,
             "ldbd_content": self.ldbd_content,
             "lp_content": self.lp_content,
@@ -122,7 +119,6 @@ class ConfigDataAvailableEvent(EventBase):
     def restore(self, snapshot: dict):
         """Restore snapshot."""
         self.basedn = snapshot["basedn"]
-        self.domain = snapshot["domain"]
         self.ldap_uri = snapshot["ldap_uri"]
         self.ldbd_content = snapshot["ldbd_content"]
         self.lp_content = snapshot["lp_content"]
@@ -283,7 +279,6 @@ class LdapClientProvides(Object):
         ldap_relation.data[self.charm.app].update(
             {
                 "basedn": self.model.config["ldap-search-base"],
-                "domain": self.model.config["domain"],
                 "ldap-uri": ldap_uri,
             }
         )
@@ -382,18 +377,15 @@ class LdapClientRequires(Object):
         # SSSD Configuration relation data
         auth_relation = self.model.get_relation("ldap-client")
         basedn = auth_relation.data[event.app].get("basedn")
-        domain = auth_relation.data[event.app].get("domain")
         ldap_uri = auth_relation.data[event.app].get("ldap-uri")
         if None not in [
             ldbd_content["ldap-default-bind-dn"],
             lp_content["ldap-password"],
             basedn,
-            domain,
             ldap_uri,
         ]:
             self.on.config_data_available.emit(
                 basedn=basedn,
-                domain=domain,
                 ldap_uri=ldap_uri,
                 ldbd_content=ldbd_content["ldap-default-bind-dn"],
                 lp_content=lp_content["ldap-password"],
