@@ -27,29 +27,29 @@ class SSSDCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.ldapclient = LdapClientRequires(self, "ldap-client")
+        self._ldapclient = LdapClientRequires(self, "ldap-client")
         # Standard Charm Events
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.start, self._on_start)
         # LDAP Client Lib Integrations
         self.framework.observe(
-            self.ldapclient.on.certificate_available,
+            self._ldapclient.on.certificate_available,
             self._on_certificate_available,
         )
         self.framework.observe(
-            self.ldapclient.on.certificate_unavailable,
+            self._ldapclient.on.certificate_unavailable,
             self._on_certificate_unavailable,
         )
         self.framework.observe(
-            self.ldapclient.on.config_data_available,
+            self._ldapclient.on.config_data_available,
             self._on_config_data_available,
         )
         self.framework.observe(
-            self.ldapclient.on.ldap_ready,
+            self._ldapclient.on.ldap_ready,
             self._on_ldap_ready,
         )
         self.framework.observe(
-            self.ldapclient.on.server_unavailable,
+            self._ldapclient.on.server_unavailable,
             self._on_server_unavailable,
         )
 
