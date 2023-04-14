@@ -96,11 +96,8 @@ class SSSDCharm(CharmBase):
 
     def _on_server_unavailable(self, event: ServerUnavailableEvent):
         """Handle server-unavailable event."""
-        # Stop SSSD
         sssd.stop()
-        # Remove Obsolete SSSD Configuration
         sssd.remove_conf()
-        # Remove Obsolete CA Certificate
         sssd.remove_ca_cert()
 
 

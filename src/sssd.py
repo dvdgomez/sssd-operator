@@ -126,8 +126,7 @@ def save_conf(
     """
     sssd_conf_path = "/etc/sssd/conf.d/sssd.conf"
     # Write contents to config file
-    with open("templates/sssd.toml.j2", "r") as f:
-        template = Template(f.read())
+    template = Template(pathlib.Path("templates/sssd.toml.j2").read_text())
     rendered = template.render(
         basedn=basedn,
         domain=domain,
@@ -135,8 +134,7 @@ def save_conf(
         ldap_default_bind_dn=ldap_default_bind_dn,
         ldap_password=ldap_password,
     )
-    with open(sssd_conf_path, "w") as f:
-        f.write(rendered)
+    pathlib.Path(sssd_conf_path).write_text(rendered)
     # Change file ownership and permissions
     os.chown(sssd_conf_path, 0, 0)
     os.chmod(sssd_conf_path, 0o600)

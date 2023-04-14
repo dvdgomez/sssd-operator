@@ -55,12 +55,6 @@ Events - TBD
 class GlauthSnapReadyEvent(EventBase):
     """Charm Event triggered when a glauth snap is ready to start."""
 
-    def __init__(
-        self,
-        handle: Handle,
-    ):
-        super().__init__(handle)
-
 
 class CertificateAvailableEvent(EventBase):
     """Charm Event triggered when a CA certificate is available."""
@@ -86,8 +80,6 @@ class CertificateAvailableEvent(EventBase):
 
 class CertificateUnavailableEvent(EventBase):
     """Charm Event triggered when a CA certificate is unavailable."""
-
-    pass
 
 
 class ConfigDataAvailableEvent(EventBase):
@@ -153,21 +145,9 @@ class ConfigDataUnavailableEvent(EventBase):
 class ServerUnavailableEvent(EventBase):
     """Charm Event triggered When the LDAP server is unavailable."""
 
-    def __init__(
-        self,
-        handle: Handle,
-    ):
-        super().__init__(handle)
-
 
 class LdapReadyEvent(EventBase):
     """Charm Event triggered when LDAP is ready to start."""
-
-    def __init__(
-        self,
-        handle: Handle,
-    ):
-        super().__init__(handle)
 
 
 class LdapClientProviderCharmEvents(CharmEvents):
@@ -208,11 +188,7 @@ class LdapClientProvides(Object):
         self.integration_name = integration_name
 
     def _get_hostname(self) -> str:
-        """Get GLAuth hostname.
-
-        Returns:
-            GLAuth hostname.
-        """
+        """Get GLAuth hostname."""
         hostname = subprocess.run(
             ["cat", "/etc/hostname"], capture_output=True, text=True
         ).stdout.strip()
@@ -288,7 +264,7 @@ class LdapClientProvides(Object):
         """Load ca-certificate from glauth snap.
 
         Returns:
-            The ca certificate content.
+            str: The ca certificate content.
         """
         cert = "/var/snap/glauth/common/etc/glauth/certs.d/glauth.crt"
         key = "/var/snap/glauth/common/etc/glauth/keys.d/glauth.key"
@@ -309,10 +285,8 @@ class LdapClientProvides(Object):
             config: Resource config Path object.
             ldap_port: LDAP port for default config.
             api_port: API port for default config.
-
-
         Returns:
-            LDAP URI.
+            str: LDAP URI.
         """
         ldap_uri = "ldap"
         # Create default config with no users if resource glauth.cfg not found
