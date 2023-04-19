@@ -213,7 +213,7 @@ class LdapClientProvides(Object):
         )
 
         # Get App Peer Secrets
-        ldap_relation = self.model.get_relation(self.app.name)
+        ldap_relation = self.model.get_relation(self.charm.app.name)
         ca_cert = ldap_relation.data[self.charm.app]["ca-cert"]
         default_bind_dn = ldap_relation.data[self.charm.app]["ldap-default-bind-dn"]
         ldap_password = ldap_relation.data[self.charm.app]["ldap-password"]
@@ -240,7 +240,7 @@ class LdapClientProvides(Object):
                 "ldap-uri": ldap_uri,
             }
         )
-        self.charm.unit.status = ActiveStatus(f"{self.app.name} ready")
+        self.charm.unit.status = ActiveStatus(f"{self.charm.app.name} ready")
 
     def set_config(self, tls: bool, ldap_port: int, config: pathlib.Path) -> str:
         """Set GLAuth config resource. Create default if none found.
