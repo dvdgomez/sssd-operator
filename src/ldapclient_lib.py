@@ -26,7 +26,7 @@ This library contains the Provides and Requires classes for handling the ldap-cl
 
 import logging
 import pathlib
-import subprocess
+import socket
 import zipfile
 
 from ops.charm import (
@@ -40,10 +40,6 @@ from ops.framework import EventBase, EventSource, Handle, Object
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 
 logger = logging.getLogger(__name__)
-
-
-class GlauthSnapReadyEvent(EventBase):
-    """Charm Event triggered when a glauth snap is ready to start."""
 
 
 class CertificateAvailableEvent(EventBase):
@@ -144,7 +140,7 @@ class LdapClientProviderCharmEvents(CharmEvents):
     """Events the LDAP Client requirer can leverage."""
 
     config_data_unavailable = EventSource(ConfigDataUnavailableEvent)
-    glauth_snap_ready = EventSource(GlauthSnapReadyEvent)
+    ldap_ready = EventSource(LdapReadyEvent)
     server_unavailable = EventSource(ServerUnavailableEvent)
 
 
@@ -177,13 +173,6 @@ class LdapClientProvides(Object):
         self.charm = charm
         self.integration_name = integration_name
 
-    def _get_hostname(self) -> str:
-        """Get GLAuth hostname."""
-        hostname = subprocess.run(
-            ["cat", "/etc/hostname"], capture_output=True, text=True
-        ).stdout.strip()
-        return hostname
-
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Handle relation-broken event.
 
@@ -204,42 +193,38 @@ class LdapClientProvides(Object):
 
         Looks at the relation data and config values and emits:
         - config unavailable event: If the config resource is not supplied.
-        - glauth snap event: When the glauth certificate, config, and key are available.
+        - ldap ready event: When the necessary ldap components are available.
         """
-        self.charm.unit.status = MaintenanceStatus("reconfiguring glauth")
+        self.charm.unit.status = MaintenanceStatus("reconfiguring ldap")
 
         # Check model for GLAuth config resource
         try:
             resource_path = self.model.resources.fetch("config")
         except ModelError:
             logger.debug("No config resource supplied")
-            resource_path = None
             self.on.config_data_unavailable.emit(
                 api_port=self.model.config["api-port"], ldap_port=self.model.config["ldap-port"]
             )
+            resource_path = None
 
         # Set config and get LDAP URI
         ldap_uri = self.set_config(
-            resource_path, self.model.config["ldap-port"], self.model.config["api-port"]
+            self.model.config["tls"], self.model.config["ldap-port"], config=resource_path
         )
 
-        # Get CA Cert and key
-        ca_cert = self.load()
-
-        # Signals glauth snap is ready to be started
-        self.on.glauth_snap_ready.emit()
-        cc_content = {"ca-cert": ca_cert}
-
-        # Get Peer Secrets
-        ldap_relation = self.model.get_relation("glauth")
+        # Get App Peer Secrets
+        ldap_relation = self.model.get_relation(self.app.name)
+        ca_cert = ldap_relation.data[self.charm.app]["ca-cert"]
         default_bind_dn = ldap_relation.data[self.charm.app]["ldap-default-bind-dn"]
         ldap_password = ldap_relation.data[self.charm.app]["ldap-password"]
+        cc_secret = self.model.get_secret(id=ca_cert)
         ldbd_secret = self.model.get_secret(id=default_bind_dn)
         lp_secret = self.model.get_secret(id=ldap_password)
 
+        # Signals ldap is ready to be started
+        self.on.ldap_ready.emit()
+
         # Create Secrets
-        cc_secret = self.charm.app.add_secret(cc_content, label="ca-cert")
-        logger.debug("created secret ca-cert")
         cc_secret.grant(event.relation)
         ldbd_secret.grant(event.relation)
         lp_secret.grant(event.relation)
@@ -255,60 +240,27 @@ class LdapClientProvides(Object):
                 "ldap-uri": ldap_uri,
             }
         )
-        self.charm.unit.status = ActiveStatus("glauth ready")
+        self.charm.unit.status = ActiveStatus(f"{self.app.name} ready")
 
-    def load(self) -> str:
-        """Load ca-certificate from glauth snap.
-
-        Returns:
-            str: The ca certificate content.
-        """
-        cert = "/var/snap/glauth/common/etc/glauth/certs.d/glauth.crt"
-        key = "/var/snap/glauth/common/etc/glauth/keys.d/glauth.key"
-        if not pathlib.Path(cert).exists() and not pathlib.Path(key).exists():
-            # If cert and key do not exist, create both
-            subprocess.run(
-                [
-                    "openssl",
-                    "req",
-                    "-x509",
-                    "-newkey",
-                    "rsa:4096",
-                    "-keyout",
-                    f"{key}",
-                    "-out",
-                    f"{cert}",
-                    "-days",
-                    "365",
-                    "-nodes",
-                    "-subj",
-                    f"/CN={self._get_hostname()}",
-                ]
-            )
-        content = open(cert, "r").read()
-        return content
-
-    def set_config(self, config: pathlib.Path, ldap_port: int, api_port: int) -> str:
+    def set_config(self, tls: bool, ldap_port: int, config: pathlib.Path) -> str:
         """Set GLAuth config resource. Create default if none found.
 
         Args:
-            config: Resource config Path object.
+            tls: TLS check.
             ldap_port: LDAP port for default config.
-            api_port: API port for default config.
+            config: Resource config Path object.
 
 
         Returns:
             str: LDAP URI.
         """
-        ldap_uri = "ldap"
-        # Create default config with no users if resource glauth.cfg not found
-        if config is None:
-            ldap_uri = ldap_uri + f"://{self._get_hostname()}:{ldap_port}"
-        # Zip file of multiple configs
-        else:
+        if config:
             with zipfile.ZipFile(config, "r") as zip:
                 zip.extractall("/var/snap/glauth/common/etc/glauth/glauth.d/")
-            ldap_uri = ldap_uri + f"s://{self._get_hostname()}:{ldap_port}"
+        if tls:
+            ldap_uri = f"ldaps://{socket.gethostname()}:{ldap_port}"
+        else:
+            ldap_uri = f"ldap://{socket.gethostname()}:{ldap_port}"
         return ldap_uri
 
 
