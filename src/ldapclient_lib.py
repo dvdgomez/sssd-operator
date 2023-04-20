@@ -240,7 +240,7 @@ class LdapClientProvides(Object):
                 "ldap-uri": ldap_uri,
             }
         )
-        self.charm.unit.status = ActiveStatus(f"{self.charm.app.name} ready")
+        self.charm.unit.status = ActiveStatus()
 
     def set_config(self, tls: bool, ldap_port: int, config: pathlib.Path) -> str:
         """Set GLAuth config resource. Create default if none found.

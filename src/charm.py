@@ -63,7 +63,7 @@ class SSSDCharm(CharmBase):
         """Handle start event."""
         logger.debug("Start")
         sssd.start()
-        self.unit.status = ActiveStatus("SSSD Operator Started")
+        self.unit.status = ActiveStatus()
 
     def _on_certificate_unavailable(self, event: CertificateUnavailableEvent):
         """Handle certificate-unavailable event."""
@@ -85,7 +85,7 @@ class SSSDCharm(CharmBase):
             event.ldbd_content,
             event.lp_content,
         )
-        self.unit.status = ActiveStatus("SSSD Active")
+        self.unit.status = ActiveStatus()
 
     def _on_ldap_ready(self, event: LdapReadyEvent):
         """Handle ldap-ready event."""
