@@ -109,23 +109,19 @@ class ConfigDataUnavailableEvent(EventBase):
         self,
         handle: Handle,
         api_port: int,
-        ldap_port: int,
     ):
         super().__init__(handle)
         self.api_port = api_port
-        self.ldap_port = ldap_port
 
     def snapshot(self) -> dict:
         """Return snapshot."""
         return {
             "api_port": self.api_port,
-            "ldap_port": self.ldap_port,
         }
 
     def restore(self, snapshot: dict):
         """Restore snapshot."""
         self.api_port = snapshot["api_port"]
-        self.ldap_port = snapshot["ldap_port"]
 
 
 class ServerUnavailableEvent(EventBase):
@@ -202,15 +198,11 @@ class LdapClientProvides(Object):
             resource_path = self.model.resources.fetch("config")
         except ModelError:
             logger.debug("No config resource supplied")
-            self.on.config_data_unavailable.emit(
-                api_port=self.model.config["api-port"], ldap_port=self.model.config["ldap-port"]
-            )
+            self.on.config_data_unavailable.emit(api_port=self.model.config["api-port"])
             resource_path = None
 
         # Set config and get LDAP URI
-        ldap_uri = self.set_config(
-            self.model.config["tls"], self.model.config["ldap-port"], config=resource_path
-        )
+        ldap_uri = self.set_config(self.model.config["tls"], config=resource_path)
 
         # Get App Peer Secrets
         ldap_relation = self.model.get_relation(self.charm.app.name)
@@ -242,12 +234,11 @@ class LdapClientProvides(Object):
         )
         self.charm.unit.status = ActiveStatus()
 
-    def set_config(self, tls: bool, ldap_port: int, config: pathlib.Path) -> str:
+    def set_config(self, tls: bool, config: pathlib.Path) -> str:
         """Set GLAuth config resource. Create default if none found.
 
         Args:
             tls: TLS check.
-            ldap_port: LDAP port for default config.
             config: Resource config Path object.
 
 
@@ -258,9 +249,9 @@ class LdapClientProvides(Object):
             with zipfile.ZipFile(config, "r") as zip:
                 zip.extractall("/var/snap/glauth/common/etc/glauth/glauth.d/")
         if tls:
-            ldap_uri = f"ldaps://{socket.gethostname()}:{ldap_port}"
+            ldap_uri = f"ldaps://{socket.gethostname()}:636"
         else:
-            ldap_uri = f"ldap://{socket.gethostname()}:{ldap_port}"
+            ldap_uri = f"ldap://{socket.gethostname()}:363"
         return ldap_uri
 
 
