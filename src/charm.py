@@ -56,7 +56,7 @@ class SSSDCharm(CharmBase):
     def _on_install(self, event):
         """Handle install event."""
         logger.debug("Install")
-        if not sssd.available:
+        if not sssd.available():
             sssd.install()
 
     def _on_start(self, event):
@@ -90,7 +90,7 @@ class SSSDCharm(CharmBase):
     def _on_ldap_ready(self, event: LdapReadyEvent):
         """Handle ldap-ready event."""
         sssd.restart()
-        if not sssd.running:
+        if not sssd.running():
             logger.error("Failed to start sssd")
             self.unit.status = BlockedStatus("SSSD failed to run")
 

@@ -16,20 +16,15 @@ from jinja2 import Template
 logger = logging.getLogger(__name__)
 
 
-def __getattr__(prop: str):
-    if prop == "available":
-        try:
-            apt.DebianPackage.from_installed_package("sssd-ldap")
-            apt.DebianPackage.from_installed_package("ldap-utils")
-            return True
-        except apt.PackageNotFoundError as e:
-            logger.debug(f"{e.message.split()[-1]} is not installed...")
-            return False
-    elif prop == "running":
-        if not systemd.service_running("sssd"):
-            return False
+def available() -> bool:
+    """Return if sssd is available or not."""
+    try:
+        apt.DebianPackage.from_installed_package("sssd-ldap")
+        apt.DebianPackage.from_installed_package("ldap-utils")
         return True
-    raise AttributeError(f"Module {__name__!r} has no property {prop!r}")
+    except apt.PackageNotFoundError as e:
+        logger.debug(f"{e.message.split()[-1]} is not installed...")
+        return False
 
 
 def disable() -> None:
@@ -89,6 +84,13 @@ def remove_conf() -> None:
 def restart() -> None:
     """Restart servers/services."""
     systemd.service_restart("sssd")
+
+
+def running() -> bool:
+    """Return if sssd is running or not."""
+    if not systemd.service_running("sssd"):
+        return False
+    return True
 
 
 def save_ca_cert(ca_cert: str) -> None:
