@@ -25,4 +25,4 @@ class TestCharm(unittest.TestCase):
     def test_start(self, start) -> None:
         """Test install behavior."""
         self.harness.charm.on.start.emit()
-        self.assertEqual(self.harness.charm.unit.status, ActiveStatus("SSSD Operator Started"))
+        self.assertEqual(self.harness.charm.unit.status, ActiveStatus())

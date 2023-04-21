@@ -15,10 +15,10 @@ class TestSSSDCharm(unittest.TestCase):
     def setUp(self) -> None:
         """Install sssd."""
         self.sssd = sssd
-        if not self.sssd.available:
+        if not self.sssd.available():
             self.sssd.install()
 
     def test_install(self):
         """Validate install."""
-        self.assertTrue(self.sssd.available)
+        self.assertTrue(self.sssd.available())
         self.sssd.remove()

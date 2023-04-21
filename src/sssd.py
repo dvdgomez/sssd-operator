@@ -4,43 +4,27 @@
 
 """Provides sssd class to control sssd."""
 
-import base64
 import logging
 import os
+import pathlib
 import subprocess
 
 from charms.operator_libs_linux.v0 import apt
 from charms.operator_libs_linux.v1 import systemd
+from jinja2 import Template
 
 logger = logging.getLogger(__name__)
 
 
-def __getattr__(prop: str):
-    if prop == "available":
-        try:
-            apt.DebianPackage.from_installed_package("sssd-ldap")
-            apt.DebianPackage.from_installed_package("ldap-utils")
-            return True
-        except apt.PackageNotFoundError as e:
-            logger.debug(f"{e.message.split()[-1]} is not installed...")
-            return False
-    elif prop == "running":
-        if not systemd.service_running("sssd"):
-            return False
+def available() -> bool:
+    """Return if sssd is available or not."""
+    try:
+        apt.DebianPackage.from_installed_package("sssd-ldap")
+        apt.DebianPackage.from_installed_package("ldap-utils")
         return True
-    raise AttributeError(f"Module {__name__!r} has no property {prop!r}")
-
-
-def _save(data: str, path: str) -> None:
-    """Decode base64 string and writes to path.
-
-    Args:
-        data: Data to save.
-        path: Location to save data to.
-    """
-    data = base64.b64decode(data.encode("utf-8"))
-    with open(path, "wb") as f:
-        f.write(data)
+    except apt.PackageNotFoundError as e:
+        logger.debug(f"{e.message.split()[-1]} is not installed...")
+        return False
 
 
 def disable() -> None:
@@ -77,9 +61,36 @@ def remove() -> None:
         raise e
 
 
+def remove_ca_cert() -> None:
+    """Remove CA certificate."""
+    pathlib.Path("/usr/local/share/ca-certificates/glauth.crt").unlink(missing_ok=True)
+    try:
+        subprocess.run(
+            ["update-ca-certificates", "--fresh"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error(f"{e} Reason:\n{e.stderr}")
+
+
+def remove_conf() -> None:
+    """Remove sssd configuration."""
+    pathlib.Path("/etc/sssd/conf.d/sssd.conf").unlink(missing_ok=True)
+
+
 def restart() -> None:
     """Restart servers/services."""
     systemd.service_restart("sssd")
+
+
+def running() -> bool:
+    """Return if sssd is running or not."""
+    if not systemd.service_running("sssd"):
+        return False
+    return True
 
 
 def save_ca_cert(ca_cert: str) -> None:
@@ -88,8 +99,8 @@ def save_ca_cert(ca_cert: str) -> None:
     Args:
         ca_cert: CA certificate.
     """
-    cacert_path = "/etc/ssl/certs/mycacert.crt"
-    _save(ca_cert, cacert_path)
+    with open("/usr/local/share/ca-certificates/glauth.crt", "w") as f:
+        f.write(ca_cert)
 
     try:
         subprocess.run(
@@ -103,19 +114,32 @@ def save_ca_cert(ca_cert: str) -> None:
         logger.error(f"{e} Reason:\n{e.stderr}")
 
 
-def save_conf(sssd_conf: str) -> None:
+def save_conf(
+    basedn: str, domain: str, ldap_uri: str, ldap_default_bind_dn: str, ldap_password: str
+) -> None:
     """Save sssd conf.
 
     Args:
-        sssd_conf: SSSD configuration file.
+        basedn:   Default base DN.
+        domain:   Domain name.
+        ldap_uri: LDAPS address.
+        ldap_default_bind_dn: Default bind DN from secret.
+        ldap_password: Password passed from secret.
     """
-    sssd_conf_path = "/etc/sssd/sssd.conf"
-    # Decode base64 string and writes to path
-    _save(sssd_conf, sssd_conf_path)
+    sssd_conf_path = "/etc/sssd/conf.d/sssd.conf"
+    # Write contents to config file
+    template = Template(pathlib.Path("templates/sssd.toml.j2").read_text())
+    rendered = template.render(
+        basedn=basedn,
+        domain=domain,
+        ldap_uri=ldap_uri,
+        ldap_default_bind_dn=ldap_default_bind_dn,
+        ldap_password=ldap_password,
+    )
+    pathlib.Path(sssd_conf_path).write_text(rendered)
     # Change file ownership and permissions
     os.chown(sssd_conf_path, 0, 0)
     os.chmod(sssd_conf_path, 0o600)
-    systemd.service_restart("sssd")
 
 
 def start() -> None:

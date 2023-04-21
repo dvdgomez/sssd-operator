@@ -11,5 +11,5 @@ requires:
   juju-info:
     interface: juju-info
     scope: container
-  sssd-ldap:
-    interface: sssd-ldap
+  ldap-client:
+    interface: ldap-client
